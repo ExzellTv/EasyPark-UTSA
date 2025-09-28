@@ -18,4 +18,5 @@ Compile it as a shared library and call from Python (via ctypes or pybind11).
 Or skip Python entirely and build your own REST server in C++ (harder).
 
 DEV RUN without API or APPS
+uvicorn app.main:app --reload
 http://127.0.0.1:8000/parking/spots
