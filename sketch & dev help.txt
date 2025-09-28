@@ -1,0 +1,21 @@
++-----------+      +-----------+
+| Cameras   | ---> | C++ OpenCV |
++-----------+      +-----------+
+                        |
+                        v
+                  Python API (FastAPI)
+                        |
+                   Mobile App / Web
+
+If priority is a working prototype → use Python + OpenCV + FastAPI.
+
+If priority is low-level performance right away → write the OpenCV detection logic in C++ and either:
+
+Expose it as a CLI tool the Python server calls.
+
+Compile it as a shared library and call from Python (via ctypes or pybind11).
+
+Or skip Python entirely and build your own REST server in C++ (harder).
+
+DEV RUN without API or APPS
+http://127.0.0.1:8000/parking/spots

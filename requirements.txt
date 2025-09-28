@@ -1,1 +1,5 @@
-pip install python-dotenv
+python-dotenv
+fastapi
+uvicorn[standard]
+python-dotenv
+opencv-python
