@@ -40,9 +40,15 @@ if VISION_MODE == "real":
 else:
     # dummy mode
     def detect_open_spots() -> List[Dict]:
+        with open(DATA_FILE, "r") as f:
+            spots = json.load(f)
+        return spots
+    
+        """
         logging.info("[vision] Dummy detect_open_spots called")
         return [
             {"id": 1, "coordinates": ((100, 200), (150, 250)), "status": "open"},
             {"id": 2, "coordinates": ((200, 200), (250, 250)), "status": "open"},
             {"id": 3, "coordinates": ((300, 200), (350, 250)), "status": "occupied"},
         ]
+        """
