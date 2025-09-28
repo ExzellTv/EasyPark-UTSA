@@ -11,7 +11,10 @@ router = APIRouter(prefix="/parking", tags=["parking"])
 
 if VISION_MODE == "real":
     import cv2
-    cap = cv2.VideoCapture("rtsp://user:pass@ipaddress/stream")
+    # cap = cv2.VideoCapture("rtsp://user:pass@ipaddress/stream")
+    cap = cv2.VideoCapture(0)  # Use 0 for webcam or replace with actual stream URL
+    if not cap.isOpened():
+        logging.error("Error: Could not open video stream.")
 
 @router.get("/spots")
 def get_open_spots():
