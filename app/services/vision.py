@@ -1,54 +1,67 @@
+# app/services/vision.py
 import os
 import cv2
+import json
 import logging
-from typing import List, Dict
+import time
+from typing import List, Dict, Tuple
 
 VISION_MODE = os.getenv("VISION_MODE", "dummy")
 logging.basicConfig(level=logging.INFO)
 logging.info(f"[vision] Starting in {VISION_MODE.upper()} mode")
 
-# Example parking spots coordinates
-PARKING_SPOTS = [
-    {"id": 1, "coords": (100, 200, 50, 50)},
-    {"id": 2, "coords": (200, 200, 50, 50)},
-    {"id": 3, "coords": (300, 200, 50, 50)}
-]
+# Load parking spots from spots.json (always the source of truth)
+with open("data/spots.json", "r") as f:
+    SPOTS = json.load(f)
 
-if VISION_MODE == "real":
-    def detect_open_spots(frame) -> List[Dict]:
-        """
-        Draws rectangles for each parking spot on the frame
-        and returns a dummy status for now.
-        """
-        results = []
-        for spot in PARKING_SPOTS:
-            x, y, w, h = spot["coords"]
-            # Draw rectangle on frame (green = open)
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+def detect_open_spots(frame) -> Tuple[List[Dict], any]:
+    """
+    Detect parking spots depending on mode (real or dummy).
+    Always returns (results, annotated_frame).
+    """
+    results = []
+    annotated = frame.copy()
+
+    if VISION_MODE == "real":
+        # For now: mark everything open
+        for spot in SPOTS:
+            x, y, w, h = spot["x"], spot["y"], spot["w"], spot["h"]
+            spot_id = spot["id"]
+
+            status = "open"  # placeholder — later use detection logic
+            color = (0, 255, 0) if status == "open" else (0, 0, 255)
+
+            cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+
             results.append({
-                "id": spot["id"],
+                "id": spot_id,
                 "coordinates": ((x, y), (x + w, y + h)),
-                "status": "open"  # just a placeholder
+                "status": status
             })
 
-        # Optional: show frame in a window
-        cv2.imshow("Parking Test", frame)
-        cv2.waitKey(1)  # 1 ms delay to refresh window
+    else:  # dummy mode
+        current_time = int(time.time())
 
-        return results
+        for spot in SPOTS:
+            x, y, w, h = spot["x"], spot["y"], spot["w"], spot["h"]
+            spot_id = spot["id"]
 
-else:
-    # dummy mode
-    def detect_open_spots() -> List[Dict]:
-        with open(DATA_FILE, "r") as f:
-            spots = json.load(f)
-        return spots
-    
-        """
-        logging.info("[vision] Dummy detect_open_spots called")
-        return [
-            {"id": 1, "coordinates": ((100, 200), (150, 250)), "status": "open"},
-            {"id": 2, "coordinates": ((200, 200), (250, 250)), "status": "open"},
-            {"id": 3, "coordinates": ((300, 200), (350, 250)), "status": "occupied"},
-        ]
-        """
+            # Cycle spot status
+            cycle_time = 6
+            phase_offset = (spot_id - 1) * 1.5
+            time_in_cycle = (current_time + phase_offset) % cycle_time
+            status = "open" if time_in_cycle < 3 else "occupied"
+
+            color = (0, 255, 0) if status == "open" else (0, 0, 255)
+            cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+            cv2.putText(annotated, status, (x + 5, y + 15),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+            results.append({
+                "id": spot_id,
+                "coordinates": ((x, y), (x + w, y + h)),
+                "status": status
+            })
+
+    return results, annotated
