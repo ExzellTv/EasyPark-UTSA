@@ -31,8 +31,8 @@ If priority is low-level performance right away → *write the OpenCV detection 
 
 
 https://viso.ai/applications/parking-lot-occupancy-detection/
-
-
+https://blog-ko.superb-ai.com/smart-parking-with-existing-cctv/
+https://www.milesight.com/security/product/ai-outdoor-parking-management-pro-bullet-plus-camera
 
 **In OpenCV (and images in general):**
 
