@@ -30,7 +30,7 @@ If priority is low-level performance right away → *write the OpenCV detection 
 
 
 
-
+https://viso.ai/applications/parking-lot-occupancy-detection/
 
 
 
