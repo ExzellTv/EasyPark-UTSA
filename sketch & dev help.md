@@ -59,6 +59,11 @@ uvicorn app.main:app --reload
 
 http://127.0.0.1:8000/parking/spots
 
+**AS OF 10/17 ~ UPDATE**
+* Have drone, going to collect necessary data/research pictures
+* Got funding for the project, going to collect necessary hardware/software items
+* Need to research more into Computer Vision, understanding how we are going to do object/car detection with YOLO, which is already a plugin/thing apparently
+* Also need to figure out how to measure out the parking spaces on the pictures/camera feed
 
 
 **Next Steps**
