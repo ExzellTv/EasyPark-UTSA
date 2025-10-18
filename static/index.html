@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Parking Dashboard</title>
+  <style>
+    :root{--ok:#22c55e;--bad:#ef4444;--muted:#94a3b8}
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;padding:0;background:#0f172a;color:#e6eef8}
+    .wrap{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;gap:20px;align-items:center}
+    h1{margin:0;font-size:20px}
+    .controls{margin-left:auto;display:flex;gap:10px;align-items:center}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:10px;padding:14px}
+    .stats{display:flex;gap:12px;margin-top:16px}
+    .stat{min-width:120px;padding:12px;border-radius:8px}
+    .stat .num{font-size:28px;font-weight:700}
+    .feed{display:flex;gap:16px;margin-top:18px}
+    .video{flex:1;min-width:360px}
+    .video img{width:100%;height:auto;border-radius:8px;background:#000}
+    .spots{width:360px}
+    .spots .spot-list{display:grid;grid-template-columns:1fr;gap:8px;max-height:560px;overflow:auto;margin-top:10px}
+    .spot{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px}
+    .spot .id{font-weight:600}
+    .badge{padding:6px 10px;border-radius:999px;color:white;font-weight:700}
+    .badge.open{background:var(--ok)}
+    .badge.occupied{background:var(--bad)}
+    .muted{color:var(--muted)}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    .small{font-size:13px;color:var(--muted)}
+    .refresh-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:inherit;cursor:pointer}
+    @media (max-width:900px){.feed{flex-direction:column}.spots{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Parking Dashboard</h1>
+        <div class="small">Live MJPEG stream + occupancy (polls /parking/spots every 2s)</div>
+      </div>
+      <div class="controls">
+        <button id="toggleAuto" class="refresh-btn">Pause</button>
+        <button id="refreshNow" class="refresh-btn">Refresh</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="stats" id="stats">
+        <div class="stat" style="background:rgba(255,255,255,0.02)">
+          <div class="small">Total</div>
+          <div class="num" id="total">—</div>
+        </div>
+        <div class="stat" style="background:rgba(255,255,255,0.02)">
+          <div class="small">Occupied</div>
+          <div class="num" id="occupied">—</div>
+        </div>
+        <div class="stat" style="background:rgba(255,255,255,0.02)">
+          <div class="small">Available</div>
+          <div class="num" id="available">—</div>
+        </div>
+      </div>
+
+      <div class="feed">
+        <div class="video">
+          <div class="small">Live video (MJPEG)</div>
+          <img id="mjpeg" src="/parking/video_feed" alt="Live feed"/>
+          <div class="muted" id="lastUpdated">Updated: —</div>
+        </div>
+
+        <div class="spots">
+          <div class="small">Spots</div>
+          <div class="spot-list card" id="spotList">Loading…</div>
+        </div>
+      </div>
+
+      <footer>
+        Serve this file from your FastAPI static files or open it from the same host so the endpoints are reachable at <code>/parking/spots</code> and <code>/parking/video_feed</code>.
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const POLL_MS = 2000;
+    let auto = true;
+    let timer = null;
+
+    const totalEl = document.getElementById('total');
+    const occupiedEl = document.getElementById('occupied');
+    const availableEl = document.getElementById('available');
+    const spotList = document.getElementById('spotList');
+    const lastUpdated = document.getElementById('lastUpdated');
+    const toggleBtn = document.getElementById('toggleAuto');
+    const refreshBtn = document.getElementById('refreshNow');
+
+    async function fetchSpots(){
+      try{
+        const res = await fetch('/parking/spots');
+        if(!res.ok) throw new Error('Bad response');
+        const data = await res.json();
+        render(data);
+      }catch(err){
+        console.error('fetch error', err);
+        lastUpdated.textContent = 'Error fetching data';
+      }
+    }
+
+    function render(data){
+      const { summary, spots } = data;
+      totalEl.textContent = summary.total;
+      occupiedEl.textContent = summary.occupied;
+      availableEl.textContent = summary.available;
+
+      spotList.innerHTML = '';
+      spots.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'spot';
+        const id = document.createElement('div');
+        id.className = 'id';
+        id.textContent = `Spot ${s.id}`;
+        const badge = document.createElement('div');
+        badge.className = 'badge ' + (s.status === 'open' ? 'open' : 'occupied');
+        badge.textContent = s.status.toUpperCase();
+        row.appendChild(id);
+        row.appendChild(badge);
+        spotList.appendChild(row);
+      });
+
+      const now = new Date();
+      lastUpdated.textContent = 'Updated: ' + now.toLocaleTimeString();
+    }
+
+    function startPoll(){
+      if(timer) clearInterval(timer);
+      timer = setInterval(()=>{ if(auto) fetchSpots(); }, POLL_MS);
+    }
+
+    toggleBtn.addEventListener('click', ()=>{
+      auto = !auto;
+      toggleBtn.textContent = auto ? 'Pause' : 'Resume';
+    });
+
+    refreshBtn.addEventListener('click', fetchSpots);
+
+    // start
+    fetchSpots();
+    startPoll();
+  </script>
+</body>
+</html>
