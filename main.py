@@ -1,21 +1,23 @@
+import os
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.routers import parking
+import app.routers.parking as parking
 
 app = FastAPI(title="Easy Park UTSA")
 
-# Allow frontend access
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# --- Handle both cases for static directory ---
+root_static = os.path.join(os.path.dirname(__file__), "static")
+app_static = os.path.join(os.path.dirname(__file__), "app", "static")
 
-# Mount static dashboard
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+if os.path.isdir(root_static):
+    static_dir = root_static
+elif os.path.isdir(app_static):
+    static_dir = app_static
+else:
+    raise RuntimeError("Static directory not found")
 
-# Register parking API routes
+# --- Register the parking API routes ---
 app.include_router(parking.router)
+
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+

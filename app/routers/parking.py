@@ -1,5 +1,6 @@
 # app/routers/parking.py
 from fastapi import APIRouter, Response
+from fastapi.responses import StreamingResponse  # add this import
 from app.services.vision import detect_open_spots
 import cv2
 import os
@@ -22,7 +23,11 @@ if VISION_MODE == "real":
     if not cap.isOpened():
         raise RuntimeError(f"Could not open camera source: {CAMERA_SOURCE}")
 
-
+@router.get("/video_feed")
+def video_feed():
+    """Live video stream showing parking lot detection."""
+    return StreamingResponse(generate_video_stream(),
+                             media_type='multipart/x-mixed-replace; boundary=frame')
 
 @router.get("/spots")
 def get_open_spots():
