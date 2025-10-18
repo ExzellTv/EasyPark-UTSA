@@ -12,7 +12,7 @@ VISION_MODE = os.getenv("VISION_MODE", "dummy")
 
 cap = None
 if VISION_MODE == "real":
-    CAMERA_SOURCE = os.getenv("./parking_crop_loop.mp4", "0")  # webcam or video path
+    CAMERA_SOURCE = os.getenv("CAMERA_SOURCE", "./parking_crop_loop.mp4")  # webcam or video path
     try:
         cam_index = int(CAMERA_SOURCE)
         cap = cv2.VideoCapture(cam_index)
@@ -73,10 +73,3 @@ def generate_video_stream():
         frame_bytes = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-
-@router.get("/video_feed")
-def video_feed():
-    """Live video stream showing parking lot detection."""
-    return Response(generate_video_stream(),
-                    media_type='multipart/x-mixed-replace; boundary=frame')
