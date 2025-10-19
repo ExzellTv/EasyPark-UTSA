@@ -2,97 +2,75 @@
 import os
 import cv2
 import json
-import logging
-import time
 import numpy as np
 from typing import List, Dict, Tuple
+from collections import deque
+from app.util import empty_or_not  # <-- you’ll need to move this util into your project
 
-# --- Mode setup ---
-VISION_MODE = os.getenv("VISION_MODE", "dummy")
-logging.basicConfig(level=logging.INFO)
-logging.info(f"[vision] Starting in {VISION_MODE.upper()} mode")
-
-# --- Load parking spot polygons ---
+VISION_MODE = os.getenv("VISION_MODE", "real")
 SPOTS_FILE = os.path.join("data", "spots.json")
-if os.path.exists(SPOTS_FILE):
-    with open(SPOTS_FILE, "r") as f:
-        SPOTS = json.load(f)
-else:
-    logging.warning("[vision] No data/spots.json found, using empty list")
-    SPOTS = []
 
-# --- Background subtractor for motion detection ---
-fgbg = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=40, detectShadows=False)
+with open(SPOTS_FILE, "r") as f:
+    data = json.load(f)
+    SPOTS = data["spots"]
+    REF_SHAPE = data["frame_shape"]
 
+cap_cache = {"prev": None}
+SPOT_HISTORY = {}
+MAX_HISTORY = 10
+STABILITY_THRESHOLD = 0.6
 
-def detect_open_spots(frame) -> Tuple[List[Dict], any]:
-    """
-    Detects parking spot occupancy (real or dummy).
-    Hybrid detection in real mode: brightness + motion mask.
-    """
-    results = []
+def smooth_status(spot_id, occupied_now):
+    from collections import deque
+    if spot_id not in SPOT_HISTORY:
+        SPOT_HISTORY[spot_id] = deque(maxlen=MAX_HISTORY)
+    history = SPOT_HISTORY[spot_id]
+    history.append(occupied_now)
+    return sum(history) / len(history) > STABILITY_THRESHOLD
+
+def detect_open_spots(frame, debug: bool = False) -> Tuple[List[Dict], any]:
     annotated = frame.copy()
+    prev_frame = cap_cache.get("prev")
+    results = []
 
-    if VISION_MODE == "real":
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        motion_mask = fgbg.apply(gray)
-        _, motion_mask = cv2.threshold(motion_mask, 200, 255, cv2.THRESH_BINARY)
-
+    if prev_frame is not None:
+        diffs = []
         for spot in SPOTS:
-            pts = np.array(spot["points"], np.int32)
+            x, y, w, h = spot["bbox"]
+            crop = frame[y:y+h, x:x+w]
+            prev_crop = prev_frame[y:y+h, x:x+w]
+            diff = np.abs(np.mean(crop) - np.mean(prev_crop))
+            diffs.append(diff)
 
-            # Create polygon mask
-            mask = np.zeros(gray.shape, dtype=np.uint8)
-            cv2.fillPoly(mask, [pts], 255)
+        max_diff = np.max(diffs) if len(diffs) else 1
+        for spot, diff in zip(SPOTS, diffs):
+            x, y, w, h = spot["bbox"]
+            crop = frame[y:y+h, x:x+w]
+            occupied_raw = not empty_or_not(crop)  # your classifier or threshold
 
-            # Compute metrics
-            mean_brightness = cv2.mean(gray, mask=mask)[0]
-            motion_activity = cv2.countNonZero(cv2.bitwise_and(motion_mask, motion_mask, mask=mask))
-            area = cv2.countNonZero(mask)
-            motion_ratio = motion_activity / area if area > 0 else 0
-
-            # Combine signals — thresholds can be tuned
-            bright_occupied = mean_brightness < 100
-            motion_occupied = motion_ratio > 0.03
-            occupied = bright_occupied or motion_occupied
+            # Optionally include diff weighting for stability
+            occupied = smooth_status(spot["id"], occupied_raw)
 
             status = "occupied" if occupied else "open"
             color = (0, 0, 255) if occupied else (0, 255, 0)
-
-            # Draw polygon & label
-            cv2.polylines(annotated, [pts], True, color, 2)
-            label_pos = tuple(pts[0])
-            cv2.putText(annotated, f"{spot['id']} {status}", label_pos,
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            cv2.rectangle(annotated, (x, y), (x+w, y+h), color, 2)
+            cv2.putText(annotated, f"{spot['id']} {status}", (x+5, y+15),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            if debug:
+                cv2.putText(annotated, f"Δ:{diff:.1f}", (x+5, y+30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
 
             results.append({
                 "id": spot["id"],
                 "status": status,
-                "brightness": round(mean_brightness, 2),
-                "motion_ratio": round(motion_ratio, 4)
+                "diff": round(diff, 2)
             })
-
     else:
-        # DUMMY MODE — simulation for testing
-        current_time = time.time()
+        # First frame fallback
         for spot in SPOTS:
-            pts = np.array(spot["points"], np.int32)
-            spot_id = spot["id"]
+            x, y, w, h = spot["bbox"]
+            cv2.rectangle(annotated, (x, y), (x+w, y+h), (255, 255, 0), 1)
+            results.append({"id": spot["id"], "status": "unknown"})
 
-            # Cycle open/occupied state visually
-            cycle_time = 6
-            phase_offset = (spot_id - 1) * 1.5
-            time_in_cycle = (current_time + phase_offset) % cycle_time
-            status = "open" if time_in_cycle < 3 else "occupied"
-
-            color = (0, 255, 0) if status == "open" else (0, 0, 255)
-            cv2.polylines(annotated, [pts], True, color, 2)
-            cv2.putText(annotated, f"{spot_id} {status}", tuple(pts[0]),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-
-            results.append({
-                "id": spot_id,
-                "status": status
-            })
-
+    cap_cache["prev"] = frame.copy()
     return results, annotated

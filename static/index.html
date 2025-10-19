@@ -1,150 +1,140 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Parking Dashboard</title>
-  <style>
-    :root{--ok:#22c55e;--bad:#ef4444;--muted:#94a3b8}
-    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;padding:0;background:#0f172a;color:#e6eef8}
-    .wrap{max-width:1100px;margin:28px auto;padding:20px}
-    header{display:flex;gap:20px;align-items:center}
-    h1{margin:0;font-size:20px}
-    .controls{margin-left:auto;display:flex;gap:10px;align-items:center}
-    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:10px;padding:14px}
-    .stats{display:flex;gap:12px;margin-top:16px}
-    .stat{min-width:120px;padding:12px;border-radius:8px}
-    .stat .num{font-size:28px;font-weight:700}
-    .feed{display:flex;gap:16px;margin-top:18px}
-    .video{flex:1;min-width:360px}
-    .video img{width:100%;height:auto;border-radius:8px;background:#000}
-    .spots{width:360px}
-    .spots .spot-list{display:grid;grid-template-columns:1fr;gap:8px;max-height:560px;overflow:auto;margin-top:10px}
-    .spot{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px}
-    .spot .id{font-weight:600}
-    .badge{padding:6px 10px;border-radius:999px;color:white;font-weight:700}
-    .badge.open{background:var(--ok)}
-    .badge.occupied{background:var(--bad)}
-    .muted{color:var(--muted)}
-    footer{margin-top:18px;color:var(--muted);font-size:13px}
-    .small{font-size:13px;color:var(--muted)}
-    .refresh-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:inherit;cursor:pointer}
-    @media (max-width:900px){.feed{flex-direction:column}.spots{width:100%}}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Parking Dashboard</h1>
-        <div class="small">Live MJPEG stream + occupancy (polls /parking/spots every 2s)</div>
-      </div>
-      <div class="controls">
-        <button id="toggleAuto" class="refresh-btn">Pause</button>
-        <button id="refreshNow" class="refresh-btn">Refresh</button>
-      </div>
-    </header>
-
-    <div class="card">
-      <div class="stats" id="stats">
-        <div class="stat" style="background:rgba(255,255,255,0.02)">
-          <div class="small">Total</div>
-          <div class="num" id="total">—</div>
-        </div>
-        <div class="stat" style="background:rgba(255,255,255,0.02)">
-          <div class="small">Occupied</div>
-          <div class="num" id="occupied">—</div>
-        </div>
-        <div class="stat" style="background:rgba(255,255,255,0.02)">
-          <div class="small">Available</div>
-          <div class="num" id="available">—</div>
-        </div>
-      </div>
-
-      <div class="feed">
-        <div class="video">
-          <div class="small">Live video (MJPEG)</div>
-          <img id="mjpeg" src="/parking/video_feed" alt="Live feed"/>
-          <div class="muted" id="lastUpdated">Updated: —</div>
-        </div>
-
-        <div class="spots">
-          <div class="small">Spots</div>
-          <div class="spot-list card" id="spotList">Loading…</div>
-        </div>
-      </div>
-
-      <footer>
-        Serve this file from your FastAPI static files or open it from the same host so the endpoints are reachable at <code>/parking/spots</code> and <code>/parking/video_feed</code>.
-      </footer>
-    </div>
-  </div>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Easy Park UTSA Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    const POLL_MS = 2000;
-    let auto = true;
-    let timer = null;
-
-    const totalEl = document.getElementById('total');
-    const occupiedEl = document.getElementById('occupied');
-    const availableEl = document.getElementById('available');
-    const spotList = document.getElementById('spotList');
-    const lastUpdated = document.getElementById('lastUpdated');
-    const toggleBtn = document.getElementById('toggleAuto');
-    const refreshBtn = document.getElementById('refreshNow');
-
-    async function fetchSpots(){
-      try{
-        const res = await fetch('/parking/spots');
-        if(!res.ok) throw new Error('Bad response');
+    async function updateSummary() {
+      try {
+        const res = await fetch("/parking/spots");
         const data = await res.json();
-        render(data);
-      }catch(err){
-        console.error('fetch error', err);
-        lastUpdated.textContent = 'Error fetching data';
+        const { total, occupied, available } = data.summary;
+        document.getElementById("live-open").textContent = available;
+        document.getElementById("live-occ").textContent = occupied;
+        document.getElementById("live-total").textContent = total;
+      } catch (err) {
+        console.error("Failed to fetch spot summary", err);
       }
     }
-
-    function render(data){
-      const { summary, spots } = data;
-      totalEl.textContent = summary.total;
-      occupiedEl.textContent = summary.occupied;
-      availableEl.textContent = summary.available;
-
-      spotList.innerHTML = '';
-      spots.forEach(s => {
-        const row = document.createElement('div');
-        row.className = 'spot';
-        const id = document.createElement('div');
-        id.className = 'id';
-        id.textContent = `Spot ${s.id}`;
-        const badge = document.createElement('div');
-        badge.className = 'badge ' + (s.status === 'open' ? 'open' : 'occupied');
-        badge.textContent = s.status.toUpperCase();
-        row.appendChild(id);
-        row.appendChild(badge);
-        spotList.appendChild(row);
-      });
-
-      const now = new Date();
-      lastUpdated.textContent = 'Updated: ' + now.toLocaleTimeString();
-    }
-
-    function startPoll(){
-      if(timer) clearInterval(timer);
-      timer = setInterval(()=>{ if(auto) fetchSpots(); }, POLL_MS);
-    }
-
-    toggleBtn.addEventListener('click', ()=>{
-      auto = !auto;
-      toggleBtn.textContent = auto ? 'Pause' : 'Resume';
-    });
-
-    refreshBtn.addEventListener('click', fetchSpots);
-
-    // start
-    fetchSpots();
-    startPoll();
+    setInterval(updateSummary, 3000);
+    window.onload = updateSummary;
   </script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center">
+  <header class="w-full bg-slate-900/70 border-b border-slate-800 py-4 shadow-md">
+    <div class="container mx-auto px-6 flex justify-between items-center">
+      <h1 class="text-2xl font-semibold text-cyan-400 tracking-wide">
+        🚗 Easy Park UTSA
+      </h1>
+      <p class="text-sm text-slate-400">Smart Parking Management System</p>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto px-6 py-12">
+    <h2 class="text-3xl font-semibold text-center text-cyan-300 mb-8">
+      Project Dashboard
+    </h2>
+
+    <!-- Grid Layout -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Live Feed Card with Summary -->
+      <a href="/live_feed.html"
+       class="group bg-slate-800/60 rounded-2xl p-6 hover:bg-slate-800 transition border border-slate-700 flex flex-col justify-center items-center shadow-lg">
+        <div class="flex flex-col items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-cyan-400 mb-4 group-hover:text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
+          </svg>
+          <h3 class="text-lg font-semibold mb-1">Live Parking Feed</h3>
+          <p class="text-sm text-slate-400 text-center mb-4">
+            View real-time detection and spot data.
+          </p>
+        </div>
+
+        <!-- Mini Summary -->
+        <div class="grid grid-cols-3 gap-2 w-full text-center border-t border-slate-700 pt-3">
+          <div>
+            <p id="live-open" class="text-xl font-semibold text-green-400">–</p>
+            <p class="text-xs text-slate-400">Open</p>
+          </div>
+          <div>
+            <p id="live-occ" class="text-xl font-semibold text-red-400">–</p>
+            <p class="text-xs text-slate-400">Occupied</p>
+          </div>
+          <div>
+            <p id="live-total" class="text-xl font-semibold text-cyan-400">–</p>
+            <p class="text-xs text-slate-400">Total</p>
+          </div>
+        </div>
+      </a>
+
+      <!-- Debug Feed -->
+      <a href="/debug_feed.html"
+       class="group bg-slate-800/60 rounded-2xl p-6 hover:bg-slate-800 transition border border-slate-700 flex flex-col justify-center items-center shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-yellow-400 mb-4 group-hover:text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20.5a8.5 8.5 0 100-17 8.5 8.5 0 000 17z" />
+        </svg>
+        <h3 class="text-lg font-semibold mb-1">Debug Mode</h3>
+        <p class="text-sm text-slate-400 text-center">
+          View motion and brightness overlays in real-time.
+        </p>
+      </a>
+
+
+      <!-- Spot Data -->
+      <a href="/parking/spots"
+         class="group bg-slate-800/60 rounded-2xl p-6 hover:bg-slate-800 transition border border-slate-700 flex flex-col justify-center items-center shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-400 mb-4 group-hover:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h4l3 8 4-16 3 8h4" />
+        </svg>
+        <h3 class="text-lg font-semibold mb-1">Spot Data (JSON)</h3>
+        <p class="text-sm text-slate-400 text-center">
+          Raw parking spot occupancy data in JSON format.
+        </p>
+      </a>
+
+      <!-- Debug JSON -->
+      <a href="/parking/spots?debug=true"
+         class="group bg-slate-800/60 rounded-2xl p-6 hover:bg-slate-800 transition border border-slate-700 flex flex-col justify-center items-center shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-purple-400 mb-4 group-hover:text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <h3 class="text-lg font-semibold mb-1">Debug Data</h3>
+        <p class="text-sm text-slate-400 text-center">
+          Detailed parking data with brightness and motion metrics.
+        </p>
+      </a>
+
+      <!-- Mask Editor -->
+      <a href="/mask_editor_info.html"
+         class="group bg-slate-800/60 rounded-2xl p-6 hover:bg-slate-800 transition border border-slate-700 flex flex-col justify-center items-center shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-rose-400 mb-4 group-hover:text-rose-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
+        </svg>
+        <h3 class="text-lg font-semibold mb-1">Mask Editor</h3>
+        <p class="text-sm text-slate-400 text-center">
+          Manage parking zone polygons interactively.
+        </p>
+      </a>
+
+      <!-- Analytics -->
+      <a href="/analytics_placeholder.html"
+         class="group bg-slate-800/60 rounded-2xl p-6 hover:bg-slate-800 transition border border-slate-700 flex flex-col justify-center items-center shadow-lg opacity-60 cursor-not-allowed">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 11V3H7v8H3l9 9 9-9h-4V3h-4v8z" />
+        </svg>
+        <h3 class="text-lg font-semibold mb-1">Analytics (Coming Soon)</h3>
+        <p class="text-sm text-slate-400 text-center">
+          Historical parking data and usage trends.
+        </p>
+      </a>
+    </div>
+  </main>
+
+  <footer class="w-full bg-slate-900/70 py-4 border-t border-slate-800 text-center text-sm text-slate-500">
+    Easy Park UTSA © 2025 — Smart Parking System Prototype
+  </footer>
 </body>
 </html>

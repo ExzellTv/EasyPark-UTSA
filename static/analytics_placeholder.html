@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mask Editor Info | Easy Park UTSA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col">
+  <header class="bg-slate-900/70 border-b border-slate-800 py-4 shadow-md">
+    <div class="container mx-auto px-6 flex justify-between items-center">
+      <h1 class="text-2xl font-semibold text-cyan-400">Mask Editor</h1>
+      <a href="/" class="text-sm text-cyan-300 hover:text-cyan-200">← Back to Dashboard</a>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto px-6 py-10">
+    <h2 class="text-xl font-semibold text-cyan-300 mb-6">How to Edit Parking Masks</h2>
+    <ul class="list-disc list-inside space-y-2 text-slate-300">
+      <li>Run <code class="bg-slate-800 px-2 py-0.5 rounded">python3 tools/mask_creator.py</code>.</li>
+      <li>Left-click to mark corners of each spot.</li>
+      <li>Right-click to complete a polygon.</li>
+      <li>Press <kbd>S</kbd> to save or <kbd>D</kbd> to delete a selected mask.</li>
+      <li>Spots are saved in <code>data/spots.json</code> with frame dimensions for auto-alignment.</li>
+    </ul>
+    <p class="mt-6 text-slate-400 text-sm">
+      After saving, restart your FastAPI server to see updates in the live feed.
+    </p>
+  </main>
+
+  <footer class="w-full bg-slate-900/70 py-4 border-t border-slate-800 text-center text-sm text-slate-500">
+    Easy Park UTSA © 2025
+  </footer>
+</body>
+</html>
