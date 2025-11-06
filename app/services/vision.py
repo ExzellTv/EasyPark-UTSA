@@ -21,7 +21,6 @@ MAX_HISTORY = 10
 STABILITY_THRESHOLD = 0.6
 
 def smooth_status(spot_id, occupied_now):
-    from collections import deque
     if spot_id not in SPOT_HISTORY:
         SPOT_HISTORY[spot_id] = deque(maxlen=MAX_HISTORY)
     history = SPOT_HISTORY[spot_id]

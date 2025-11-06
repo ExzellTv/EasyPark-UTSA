@@ -91,7 +91,8 @@ def get_open_spots(debug: bool = Query(False, description="Include detailed metr
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
 
     results, annotated = detect_open_spots(frame, debug=debug)
-    cv2.imwrite("latest_frame.jpg", annotated)
+    # Optional: Save frame for debugging (comment out in production)
+    # cv2.imwrite("latest_frame.jpg", annotated)
 
     total = len(results)
     occupied = len([s for s in results if s["status"] == "occupied"])

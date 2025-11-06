@@ -27,7 +27,7 @@
             }`;
           item.innerHTML = `
             <span>Spot ${s.id}: ${s.status}</span>
-            <span class="text-xs text-slate-400">B:${s.brightness ?? "–"} | M:${(s.motion_ratio ?? 0 * 100).toFixed(1)}%</span>
+            <span class="text-xs text-slate-400">B:${s.brightness ?? "–"} | M:${((s.motion_ratio ?? 0) * 100).toFixed(1)}%</span>
           `;
           list.appendChild(item);
         });
