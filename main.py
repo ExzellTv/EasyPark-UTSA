@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+import app.config  # Load environment variables first
 import app.routers.parking as parking
 
 app = FastAPI(title="Easy Park UTSA")

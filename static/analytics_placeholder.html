@@ -3,33 +3,197 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mask Editor Info | Easy Park UTSA</title>
+  <title>Analytics | Easy Park UTSA</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes gradient-shift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .gradient-bg {
+      background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e293b);
+      background-size: 400% 400%;
+      animation: gradient-shift 15s ease infinite;
+    }
+
+    .glass-panel {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .glossy-btn {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.9), rgba(6, 182, 212, 0.9));
+      box-shadow: 0 4px 15px rgba(34, 211, 238, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .glossy-btn:hover {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 1), rgba(6, 182, 212, 1));
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(34, 211, 238, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+    }
+
+    .glossy-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .glossy-btn:hover::before {
+      left: 100%;
+    }
+
+    .feature-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+
+    .float-animation {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -1000px 0; }
+      100% { background-position: 1000px 0; }
+    }
+
+    .shimmer {
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+      background-size: 1000px 100%;
+      animation: shimmer 2s infinite;
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen flex flex-col">
-  <header class="bg-slate-900/70 border-b border-slate-800 py-4 shadow-md">
+<body class="gradient-bg text-white min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="w-full bg-slate-900/50 backdrop-blur-md border-b border-slate-700/50 py-5 shadow-2xl">
     <div class="container mx-auto px-6 flex justify-between items-center">
-      <h1 class="text-2xl font-semibold text-cyan-400">Mask Editor</h1>
-      <a href="/" class="text-sm text-cyan-300 hover:text-cyan-200">← Back to Dashboard</a>
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-purple-300 to-indigo-400 bg-clip-text text-transparent">
+          Analytics Dashboard
+        </h1>
+      </div>
+      <a href="/" class="glossy-btn px-5 py-2 rounded-xl text-sm font-semibold text-white">
+        ← Dashboard
+      </a>
     </div>
   </header>
 
-  <main class="flex-grow container mx-auto px-6 py-10">
-    <h2 class="text-xl font-semibold text-cyan-300 mb-6">How to Edit Parking Masks</h2>
-    <ul class="list-disc list-inside space-y-2 text-slate-300">
-      <li>Run <code class="bg-slate-800 px-2 py-0.5 rounded">python3 tools/mask_creator.py</code>.</li>
-      <li>Left-click to mark corners of each spot.</li>
-      <li>Right-click to complete a polygon.</li>
-      <li>Press <kbd>S</kbd> to save or <kbd>D</kbd> to delete a selected mask.</li>
-      <li>Spots are saved in <code>data/spots.json</code> with frame dimensions for auto-alignment.</li>
-    </ul>
-    <p class="mt-6 text-slate-400 text-sm">
-      After saving, restart your FastAPI server to see updates in the live feed.
-    </p>
+  <!-- Main Content -->
+  <main class="flex-grow container mx-auto px-6 py-16">
+    <div class="max-w-4xl mx-auto">
+      <!-- Coming Soon Badge -->
+      <div class="text-center mb-12 float-animation">
+        <div class="inline-block px-6 py-3 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-400/30 rounded-full mb-8">
+          <span class="text-purple-300 font-semibold uppercase tracking-wide text-sm">Coming Soon</span>
+        </div>
+        <h2 class="text-5xl font-bold mb-6 bg-gradient-to-r from-purple-200 via-indigo-300 to-blue-400 bg-clip-text text-transparent">
+          Advanced Analytics
+        </h2>
+        <p class="text-xl text-slate-300 mb-4">
+          Comprehensive parking data insights and historical trends
+        </p>
+        <p class="text-slate-400">
+          We're building powerful analytics tools to help you understand parking patterns and optimize usage.
+        </p>
+      </div>
+
+      <!-- Feature Cards -->
+      <div class="grid md:grid-cols-2 gap-6 mt-16">
+        <div class="feature-card rounded-3xl p-8">
+          <div class="w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-green-200">Historical Trends</h3>
+          <p class="text-slate-300 text-sm">
+            Visualize parking occupancy patterns over time with interactive charts and graphs
+          </p>
+        </div>
+
+        <div class="feature-card rounded-3xl p-8">
+          <div class="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-blue-200">Peak Hour Analysis</h3>
+          <p class="text-slate-300 text-sm">
+            Identify busiest times and optimize parking availability during high-demand periods
+          </p>
+        </div>
+
+        <div class="feature-card rounded-3xl p-8">
+          <div class="w-14 h-14 bg-gradient-to-br from-orange-400 to-red-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-orange-200">Usage Reports</h3>
+          <p class="text-slate-300 text-sm">
+            Generate detailed reports on parking spot utilization and efficiency metrics
+          </p>
+        </div>
+
+        <div class="feature-card rounded-3xl p-8">
+          <div class="w-14 h-14 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-purple-200">Predictive Insights</h3>
+          <p class="text-slate-300 text-sm">
+            Machine learning-powered predictions for future parking availability
+          </p>
+        </div>
+      </div>
+
+      <!-- CTA Section -->
+      <div class="glass-panel rounded-3xl p-10 mt-16 text-center shimmer">
+        <h3 class="text-2xl font-bold mb-4 text-slate-200">Want to be notified when analytics launch?</h3>
+        <p class="text-slate-400 mb-6">
+          We're working hard to bring you comprehensive analytics. Stay tuned for updates!
+        </p>
+        <div class="flex justify-center gap-4">
+          <a href="/" class="glossy-btn px-8 py-3 rounded-xl text-sm font-semibold text-white">
+            Back to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
   </main>
 
-  <footer class="w-full bg-slate-900/70 py-4 border-t border-slate-800 text-center text-sm text-slate-500">
-    Easy Park UTSA © 2025
+  <!-- Footer -->
+  <footer class="w-full bg-slate-900/50 backdrop-blur-md py-6 border-t border-slate-700/50 text-center">
+    <p class="text-slate-400 text-sm">Easy Park UTSA © 2025 — Smart Parking System</p>
   </footer>
 </body>
 </html>

@@ -5,31 +5,216 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mask Editor Info | Easy Park UTSA</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes gradient-shift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .gradient-bg {
+      background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e293b);
+      background-size: 400% 400%;
+      animation: gradient-shift 15s ease infinite;
+    }
+
+    .glass-panel {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .glossy-btn {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.9), rgba(225, 29, 72, 0.9));
+      box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .glossy-btn:hover {
+      background: linear-gradient(135deg, rgba(244, 63, 94, 1), rgba(225, 29, 72, 1));
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(244, 63, 94, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+    }
+
+    .glossy-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .glossy-btn:hover::before {
+      left: 100%;
+    }
+
+    .instruction-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    .instruction-card:hover {
+      transform: translateX(8px);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .kbd-key {
+      background: linear-gradient(135deg, rgba(148, 163, 184, 0.3), rgba(100, 116, 139, 0.3));
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    }
+
+    .code-block {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      box-shadow: 0 4px 12px rgba(244, 63, 94, 0.2);
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen flex flex-col">
-  <header class="bg-slate-900/70 border-b border-slate-800 py-4 shadow-md">
+<body class="gradient-bg text-white min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="w-full bg-slate-900/50 backdrop-blur-md border-b border-rose-700/30 py-5 shadow-2xl">
     <div class="container mx-auto px-6 flex justify-between items-center">
-      <h1 class="text-2xl font-semibold text-cyan-400">Mask Editor</h1>
-      <a href="/" class="text-sm text-cyan-300 hover:text-cyan-200">← Back to Dashboard</a>
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 bg-gradient-to-br from-rose-400 to-pink-600 rounded-lg flex items-center justify-center shadow-lg">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-rose-300 to-pink-400 bg-clip-text text-transparent">
+          Mask Editor Guide
+        </h1>
+      </div>
+      <a href="/" class="glossy-btn px-5 py-2 rounded-xl text-sm font-semibold text-white">
+        ← Dashboard
+      </a>
     </div>
   </header>
 
-  <main class="flex-grow container mx-auto px-6 py-10">
-    <h2 class="text-xl font-semibold text-cyan-300 mb-6">How to Edit Parking Masks</h2>
-    <ul class="list-disc list-inside space-y-2 text-slate-300">
-      <li>Run <code class="bg-slate-800 px-2 py-0.5 rounded">python3 tools/mask_creator.py</code>.</li>
-      <li>Left-click to mark corners of each spot.</li>
-      <li>Right-click to complete a polygon.</li>
-      <li>Press <kbd>S</kbd> to save or <kbd>D</kbd> to delete a selected mask.</li>
-      <li>Spots are saved in <code>data/spots.json</code> with frame dimensions for auto-alignment.</li>
-    </ul>
-    <p class="mt-6 text-slate-400 text-sm">
-      After saving, restart your FastAPI server to see updates in the live feed.
-    </p>
+  <!-- Main Content -->
+  <main class="flex-grow container mx-auto px-6 py-12">
+    <div class="max-w-4xl mx-auto">
+      <!-- Intro Section -->
+      <div class="glass-panel rounded-3xl p-8 mb-8 shadow-2xl">
+        <h2 class="text-3xl font-bold mb-4 bg-gradient-to-r from-rose-200 to-pink-300 bg-clip-text text-transparent">
+          How to Edit Parking Masks
+        </h2>
+        <p class="text-slate-300 text-lg mb-4">
+          The mask editor allows you to define parking spot boundaries on your video feed. Follow these steps to configure your parking lot layout.
+        </p>
+      </div>
+
+      <!-- Getting Started -->
+      <div class="glass-panel rounded-3xl p-8 mb-6 shadow-2xl">
+        <div class="flex items-center mb-6">
+          <div class="w-12 h-12 bg-gradient-to-br from-rose-400 to-pink-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+          <h3 class="text-2xl font-bold text-rose-200">Getting Started</h3>
+        </div>
+        <p class="text-slate-300 mb-4">Run the mask creator tool from your terminal:</p>
+        <div class="code-block px-6 py-4 rounded-2xl font-mono text-sm text-rose-300">
+          python3 tools/mask_creator.py
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <div class="space-y-4 mb-8">
+        <div class="instruction-card rounded-2xl p-6 flex items-start">
+          <div class="w-10 h-10 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mr-4 shadow-lg flex-shrink-0">
+            <span class="text-white font-bold text-lg">1</span>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-lg font-bold text-rose-200 mb-2">Draw Parking Spots</h4>
+            <p class="text-slate-300">
+              Left-click and drag to draw rectangular bounding boxes around each parking spot in your video feed.
+            </p>
+          </div>
+        </div>
+
+        <div class="instruction-card rounded-2xl p-6 flex items-start">
+          <div class="w-10 h-10 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mr-4 shadow-lg flex-shrink-0">
+            <span class="text-white font-bold text-lg">2</span>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-lg font-bold text-rose-200 mb-2">Save Your Work</h4>
+            <p class="text-slate-300 mb-3">
+              Press <kbd class="kbd-key px-3 py-1 rounded-lg text-sm font-mono mx-1">S</kbd> to save all parking spots to <code class="code-block px-2 py-1 rounded text-xs">data/spots.json</code>
+            </p>
+          </div>
+        </div>
+
+        <div class="instruction-card rounded-2xl p-6 flex items-start">
+          <div class="w-10 h-10 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mr-4 shadow-lg flex-shrink-0">
+            <span class="text-white font-bold text-lg">3</span>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-lg font-bold text-rose-200 mb-2">Delete Mistakes</h4>
+            <p class="text-slate-300">
+              Press <kbd class="kbd-key px-3 py-1 rounded-lg text-sm font-mono mx-1">D</kbd> to delete the most recently added parking spot.
+            </p>
+          </div>
+        </div>
+
+        <div class="instruction-card rounded-2xl p-6 flex items-start">
+          <div class="w-10 h-10 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mr-4 shadow-lg flex-shrink-0">
+            <span class="text-white font-bold text-lg">4</span>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-lg font-bold text-rose-200 mb-2">Reset All Spots</h4>
+            <p class="text-slate-300">
+              Press <kbd class="kbd-key px-3 py-1 rounded-lg text-sm font-mono mx-1">R</kbd> to clear all parking spots and start fresh.
+            </p>
+          </div>
+        </div>
+
+        <div class="instruction-card rounded-2xl p-6 flex items-start">
+          <div class="w-10 h-10 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mr-4 shadow-lg flex-shrink-0">
+            <span class="text-white font-bold text-lg">5</span>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-lg font-bold text-rose-200 mb-2">Exit the Editor</h4>
+            <p class="text-slate-300">
+              Press <kbd class="kbd-key px-3 py-1 rounded-lg text-sm font-mono mx-1">ESC</kbd> to close the mask editor when you're finished.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Important Note -->
+      <div class="glass-panel rounded-3xl p-8 shadow-2xl border-rose-500/30">
+        <div class="flex items-start">
+          <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center mr-4 shadow-lg flex-shrink-0">
+            <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-xl font-bold text-yellow-300 mb-3">Important</h4>
+            <p class="text-slate-300 mb-2">
+              After saving your parking spot definitions, you must restart the FastAPI server for the changes to take effect:
+            </p>
+            <div class="code-block px-6 py-3 rounded-2xl font-mono text-sm text-cyan-300 mt-4">
+              uvicorn main:app --reload
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
-  <footer class="w-full bg-slate-900/70 py-4 border-t border-slate-800 text-center text-sm text-slate-500">
-    Easy Park UTSA © 2025
+  <!-- Footer -->
+  <footer class="w-full bg-slate-900/50 backdrop-blur-md py-6 border-t border-rose-700/30 text-center">
+    <p class="text-slate-400 text-sm">Easy Park UTSA © 2025 — Smart Parking System</p>
   </footer>
 </body>
 </html>
