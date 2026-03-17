@@ -3,211 +3,248 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Live parking detection feed showing real-time spot occupancy at UTSA campus" />
+  <meta name="theme-color" content="#0a0e1a" />
   <title>Live Parking Feed | Easy Park UTSA</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
-    @keyframes gradient-shift {
-      0%, 100% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
+    body {
+      background-color: #0a0e1a;
     }
 
-    .gradient-bg {
-      background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e293b);
-      background-size: 400% 400%;
-      animation: gradient-shift 15s ease infinite;
-    }
-
-    .glass-panel {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-    }
-
-    .glossy-btn {
-      position: relative;
-      overflow: hidden;
-      background: linear-gradient(135deg, rgba(34, 211, 238, 0.9), rgba(6, 182, 212, 0.9));
-      box-shadow: 0 4px 15px rgba(34, 211, 238, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
-      transition: all 0.3s ease;
-    }
-
-    .glossy-btn:hover {
-      background: linear-gradient(135deg, rgba(34, 211, 238, 1), rgba(6, 182, 212, 1));
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(34, 211, 238, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.3);
-    }
-
-    .glossy-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-      transition: left 0.5s ease;
-    }
-
-    .glossy-btn:hover::before {
-      left: 100%;
+    .panel {
+      background: #151b2e;
+      border: 1px solid #1f2937;
     }
 
     .stat-card {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      transition: all 0.3s ease;
-    }
-
-    .stat-card:hover {
-      transform: scale(1.05);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: #1a2236;
+      border: 1px solid #1f2937;
     }
 
     .video-container {
       position: relative;
       overflow: hidden;
-      border-radius: 1.5rem;
-      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(148, 163, 184, 0.2);
+      border-radius: 0.75rem;
+      background: #151b2e;
+      border: 1px solid #1f2937;
     }
 
-    .video-container::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #22d3ee, #06b6d4, #0891b2);
-      z-index: 10;
-    }
-
-    .spot-badge-occupied {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.15));
-      border: 1px solid rgba(239, 68, 68, 0.4);
+    .spot-badge {
+      border: 1px solid #1f2937;
       transition: all 0.2s ease;
     }
 
-    .spot-badge-open {
-      background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.15));
-      border: 1px solid rgba(34, 197, 94, 0.4);
-      transition: all 0.2s ease;
-    }
-
-    .spot-badge-occupied:hover, .spot-badge-open:hover {
-      transform: translateX(4px);
-    }
-
-    @keyframes pulse-live {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    .spot-badge:hover {
+      background: #1a2236;
     }
 
     .live-indicator {
-      animation: pulse-live 2s ease-in-out infinite;
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
   </style>
   <script>
+    let errorCount = 0;
+    const MAX_ERRORS = 3;
+
     async function fetchSpots() {
       try {
         const res = await fetch("/parking/spots");
-        const data = await res.json();
-        const { total, occupied, available } = data.summary;
-        document.getElementById("totalCount").textContent = total;
-        document.getElementById("openCount").textContent = available;
-        document.getElementById("occCount").textContent = occupied;
 
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        const { total, occupied, available } = data.summary;
+
+        // Update counts with smooth transition
+        updateCount("totalCount", total, "text-cyan-400");
+        updateCount("openCount", available, "text-green-400");
+        updateCount("occCount", occupied, "text-red-400");
+
+        // Update spot list
         const list = document.getElementById("spotList");
         list.innerHTML = "";
+
         data.spots.forEach(s => {
           const item = document.createElement("li");
           const isOccupied = s.status === "occupied";
-          item.className = `px-4 py-2.5 rounded-xl text-sm font-medium ${
-            isOccupied ? "spot-badge-occupied text-red-300" : "spot-badge-open text-green-300"
-          }`;
+          const bgColor = isOccupied ? "bg-red-600/10" : "bg-emerald-600/10";
+          const textColor = isOccupied ? "text-red-400" : "text-emerald-400";
+
+          item.className = `spot-badge px-4 py-2.5 rounded-lg text-sm font-medium ${bgColor} ${textColor}`;
           item.textContent = `Spot ${s.id}: ${s.status}`;
+          item.setAttribute("role", "listitem");
+          item.setAttribute("aria-label", `Spot ${s.id} is ${s.status}`);
+
           list.appendChild(item);
         });
+
+        // Reset error counter
+        errorCount = 0;
+        hideError();
+
       } catch (e) {
         console.error("Error fetching spots", e);
+        errorCount++;
+
+        if (errorCount >= MAX_ERRORS) {
+          showError(`Failed to load parking data: ${e.message}`);
+        }
       }
     }
+
+    function updateCount(id, value, colorClass) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = value;
+        el.className = `text-4xl font-bold ${colorClass} mb-1`;
+      }
+    }
+
+    function showError(message) {
+      const banner = document.getElementById("error-banner");
+      if (banner) {
+        banner.querySelector("p").textContent = message;
+        banner.classList.remove("hidden");
+      }
+    }
+
+    function hideError() {
+      const banner = document.getElementById("error-banner");
+      if (banner) {
+        banner.classList.add("hidden");
+      }
+    }
+
+    function handleVideoError() {
+      showError("Video feed unavailable. Please check camera connection.");
+    }
+
+    // Initialize
     setInterval(fetchSpots, 2000);
-    window.onload = fetchSpots;
+    window.onload = () => {
+      fetchSpots();
+
+      // Add error handler for video feed
+      const videoImg = document.getElementById("video-feed");
+      if (videoImg) {
+        videoImg.addEventListener("error", handleVideoError);
+      }
+
+      // GSAP animations
+      gsap.from(".video-container", {
+        opacity: 0,
+        scale: 0.95,
+        duration: 0.6,
+        ease: "power2.out"
+      });
+
+      gsap.from(".panel", {
+        opacity: 0,
+        x: 30,
+        duration: 0.6,
+        ease: "power2.out"
+      });
+
+      gsap.from("header", {
+        opacity: 0,
+        y: -20,
+        duration: 0.5,
+        ease: "power2.out"
+      });
+    };
   </script>
 </head>
-<body class="gradient-bg text-white min-h-screen flex flex-col">
+<body class="text-white min-h-screen flex flex-col">
+  <!-- Error Banner -->
+  <div id="error-banner" role="alert" aria-live="assertive" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg border border-red-500 max-w-md text-center">
+    <p class="text-sm font-medium"></p>
+  </div>
+
   <!-- Header -->
-  <header class="w-full bg-slate-900/50 backdrop-blur-md border-b border-slate-700/50 py-5 shadow-2xl">
+  <header class="w-full bg-[#0f1422] border-b border-gray-800 py-6">
     <div class="container mx-auto px-6 flex justify-between items-center">
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center shadow-lg">
+        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z"></path>
           </svg>
         </div>
-        <h1 class="text-2xl font-bold bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
+        <h1 class="text-xl font-semibold text-white">
           Easy Park UTSA
         </h1>
         <div class="flex items-center space-x-2 ml-4">
           <div class="w-2 h-2 bg-red-500 rounded-full live-indicator"></div>
-          <span class="text-xs text-red-400 font-semibold uppercase tracking-wide">Live</span>
+          <span class="text-xs text-red-400 font-medium uppercase tracking-wide">Live</span>
         </div>
       </div>
-      <a href="/" class="glossy-btn px-5 py-2 rounded-xl text-sm font-semibold text-white">
+      <a href="/" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium text-white transition-colors">
         ← Dashboard
       </a>
     </div>
   </header>
 
   <!-- Main Content -->
-  <main class="flex-grow container mx-auto px-6 py-10 grid lg:grid-cols-3 gap-8">
+  <main class="flex-grow container mx-auto px-6 py-10 grid lg:grid-cols-3 gap-6">
     <!-- Live video -->
     <div class="lg:col-span-2 flex flex-col">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-bold bg-gradient-to-r from-cyan-200 to-blue-300 bg-clip-text text-transparent">
+        <h2 class="text-2xl font-semibold text-white">
           Live Detection Feed
         </h2>
       </div>
       <div class="video-container">
-        <img src="/parking/video_feed" alt="Live Feed" class="w-full h-auto" />
+        <img id="video-feed" src="/parking/video_feed" alt="Live parking detection feed showing real-time spot occupancy" class="w-full h-auto" loading="lazy" />
       </div>
-      <p class="text-slate-400 text-sm mt-4 text-center">
+      <p class="text-gray-400 text-sm mt-4 text-center">
         Real-time MJPEG stream from the detection system • Updates every 50ms
       </p>
     </div>
 
     <!-- Stats panel -->
-    <div class="glass-panel rounded-3xl p-6 shadow-2xl flex flex-col">
-      <h3 class="text-xl font-bold mb-6 bg-gradient-to-r from-cyan-200 to-blue-300 bg-clip-text text-transparent">
+    <div class="panel rounded-xl p-6 flex flex-col">
+      <h3 class="text-xl font-semibold mb-6 text-white">
         Current Status
       </h3>
 
       <div class="grid grid-cols-1 gap-4 mb-6">
-        <div class="stat-card rounded-2xl p-5 text-center">
-          <p class="text-4xl font-bold text-green-400 mb-1" id="openCount">–</p>
-          <p class="text-sm text-slate-300 uppercase tracking-wide">Available Spots</p>
+        <div class="stat-card rounded-lg p-5 text-center">
+          <p class="text-4xl font-semibold text-emerald-400 mb-1" id="openCount">–</p>
+          <p class="text-sm text-gray-400 uppercase tracking-wide">Available Spots</p>
         </div>
-        <div class="stat-card rounded-2xl p-5 text-center">
-          <p class="text-4xl font-bold text-red-400 mb-1" id="occCount">–</p>
-          <p class="text-sm text-slate-300 uppercase tracking-wide">Occupied Spots</p>
+        <div class="stat-card rounded-lg p-5 text-center">
+          <p class="text-4xl font-semibold text-red-400 mb-1" id="occCount">–</p>
+          <p class="text-sm text-gray-400 uppercase tracking-wide">Occupied Spots</p>
         </div>
-        <div class="stat-card rounded-2xl p-5 text-center">
-          <p class="text-4xl font-bold text-cyan-400 mb-1" id="totalCount">–</p>
-          <p class="text-sm text-slate-300 uppercase tracking-wide">Total Spots</p>
+        <div class="stat-card rounded-lg p-5 text-center">
+          <p class="text-4xl font-semibold text-blue-400 mb-1" id="totalCount">–</p>
+          <p class="text-sm text-gray-400 uppercase tracking-wide">Total Spots</p>
         </div>
       </div>
 
-      <div class="border-t border-slate-600/50 pt-6">
-        <h4 class="text-sm text-slate-400 mb-4 uppercase tracking-wide font-semibold">Individual Spot Status</h4>
-        <ul id="spotList" class="space-y-2 overflow-y-auto h-96 pr-2 custom-scrollbar"></ul>
+      <div class="border-t border-gray-700 pt-6">
+        <h4 class="text-sm text-gray-400 mb-4 uppercase tracking-wide font-medium">Individual Spot Status</h4>
+        <ul id="spotList" class="space-y-2 overflow-y-auto h-96 pr-2 custom-scrollbar" role="list" aria-live="polite" aria-label="Individual parking spot statuses"></ul>
       </div>
     </div>
   </main>
 
   <!-- Footer -->
-  <footer class="w-full bg-slate-900/50 backdrop-blur-md py-6 border-t border-slate-700/50 text-center">
-    <p class="text-slate-400 text-sm">Easy Park UTSA © 2025 — Smart Parking System</p>
+  <footer class="w-full bg-[#0f1422] py-6 border-t border-gray-800 text-center">
+    <p class="text-gray-500 text-sm">Easy Park UTSA © 2025 — Smart Parking System</p>
   </footer>
 
   <style>
@@ -215,15 +252,15 @@
       width: 8px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
-      background: rgba(30, 41, 59, 0.5);
+      background: #1a2236;
       border-radius: 10px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: rgba(148, 163, 184, 0.4);
+      background: #374151;
       border-radius: 10px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: rgba(148, 163, 184, 0.6);
+      background: #4b5563;
     }
   </style>
 </body>

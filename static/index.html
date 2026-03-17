@@ -3,104 +3,152 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Easy Park UTSA - Smart parking management system with real-time occupancy detection for UTSA campus" />
+  <meta name="keywords" content="parking, UTSA, smart parking, computer vision, real-time" />
+  <meta name="theme-color" content="#0a0e1a" />
   <title>Easy Park UTSA Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
-    @keyframes gradient-shift {
-      0%, 100% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
+    body {
+      background-color: #0a0e1a;
     }
 
-    .gradient-bg {
-      background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e293b);
-      background-size: 400% 400%;
-      animation: gradient-shift 15s ease infinite;
+    .card {
+      background: #151b2e;
+      border: 1px solid #1f2937;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .glass-card {
-      background: rgba(30, 41, 59, 0.6);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      transition: all 0.3s ease;
-    }
-
-    .glass-card:hover {
-      background: rgba(51, 65, 85, 0.7);
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    }
-
-    .glossy-btn {
-      position: relative;
-      overflow: hidden;
-      background: linear-gradient(135deg, rgba(34, 211, 238, 0.9), rgba(6, 182, 212, 0.9));
-      box-shadow: 0 4px 15px rgba(34, 211, 238, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
-    }
-
-    .glossy-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-      transition: left 0.5s ease;
-    }
-
-    .glossy-btn:hover::before {
-      left: 100%;
+    .card:hover {
+      background: #1a2236;
+      border-color: #374151;
     }
 
     .stat-badge {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .pulse-glow {
-      animation: pulse-glow 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse-glow {
-      0%, 100% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.3); }
-      50% { box-shadow: 0 0 30px rgba(34, 211, 238, 0.6); }
+      background: #1a2236;
+      border: 1px solid #1f2937;
     }
   </style>
   <script>
+    let fetchAttempts = 0;
+    const MAX_RETRIES = 3;
+
     async function updateSummary() {
       try {
         const res = await fetch("/parking/spots");
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+
         const data = await res.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
         const { total, occupied, available } = data.summary;
-        document.getElementById("live-open").textContent = available;
-        document.getElementById("live-occ").textContent = occupied;
-        document.getElementById("live-total").textContent = total;
+
+        // Update display with animation
+        updateElement("live-open", available, "text-green-400");
+        updateElement("live-occ", occupied, "text-red-400");
+        updateElement("live-total", total, "text-cyan-400");
+
+        // Reset error counter on success
+        fetchAttempts = 0;
+        hideError();
+
       } catch (err) {
         console.error("Failed to fetch spot summary", err);
+        fetchAttempts++;
+
+        if (fetchAttempts >= MAX_RETRIES) {
+          showError(`Unable to load parking data: ${err.message}`);
+        }
+
+        // Show loading state
+        setLoadingState();
       }
     }
+
+    function updateElement(id, value, colorClass) {
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = value;
+        element.className = `text-2xl font-bold ${colorClass}`;
+      }
+    }
+
+    function setLoadingState() {
+      ["live-open", "live-occ", "live-total"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.textContent === "–") {
+          el.innerHTML = '<div class="inline-block w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>';
+        }
+      });
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById("error-banner");
+      if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.classList.remove("hidden");
+      }
+    }
+
+    function hideError() {
+      const errorDiv = document.getElementById("error-banner");
+      if (errorDiv) {
+        errorDiv.classList.add("hidden");
+      }
+    }
+
+    // Initialize
     setInterval(updateSummary, 3000);
-    window.onload = updateSummary;
+    window.onload = () => {
+      setLoadingState();
+      updateSummary();
+
+      // GSAP animations
+      gsap.from(".card", {
+        opacity: 0,
+        y: 30,
+        duration: 0.6,
+        stagger: 0.1,
+        ease: "power2.out"
+      });
+
+      gsap.from("header", {
+        opacity: 0,
+        y: -20,
+        duration: 0.5,
+        ease: "power2.out"
+      });
+    };
   </script>
 </head>
-<body class="gradient-bg text-white min-h-screen flex flex-col">
+<body class="text-white min-h-screen flex flex-col">
+  <!-- Error Banner -->
+  <div id="error-banner" role="alert" aria-live="assertive" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg border border-red-500 max-w-md text-center">
+    <p class="text-sm font-medium"></p>
+  </div>
+
   <!-- Header -->
-  <header class="w-full bg-slate-900/50 backdrop-blur-md border-b border-slate-700/50 py-5 shadow-2xl">
+  <header class="w-full bg-[#0f1422] border-b border-gray-800 py-6" role="banner">
     <div class="container mx-auto px-6 flex justify-between items-center">
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center shadow-lg">
+        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center" aria-hidden="true">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
           </svg>
         </div>
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-cyan-300 to-blue-400 bg-clip-text text-transparent">
+        <h1 class="text-2xl font-semibold text-white">
           Easy Park UTSA
         </h1>
       </div>
       <div class="flex items-center space-x-4">
-        <div class="px-4 py-2 bg-cyan-500/20 border border-cyan-400/30 rounded-full text-sm text-cyan-300 font-medium">
+        <div class="px-4 py-2 bg-blue-600/10 border border-blue-600/20 rounded-lg text-sm text-blue-400 font-medium" role="status">
           Smart Parking System
         </div>
       </div>
@@ -108,113 +156,114 @@
   </header>
 
   <!-- Main Content -->
-  <main class="flex-grow container mx-auto px-6 py-12">
+  <main class="flex-grow container mx-auto px-6 py-12" role="main">
     <div class="text-center mb-12">
-      <h2 class="text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-200 via-blue-300 to-purple-400 bg-clip-text text-transparent">
-        Project Dashboard
+      <h2 class="text-4xl font-semibold mb-3 text-white">
+        Dashboard
       </h2>
-      <p class="text-slate-300 text-lg">Real-time parking management and analytics</p>
+      <p class="text-gray-400 text-lg">Real-time parking management and analytics</p>
     </div>
 
     <!-- Grid Layout -->
-    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Live Feed Card with Summary -->
       <a href="/live_feed.html"
-       class="glass-card rounded-3xl p-8 flex flex-col justify-center items-center shadow-2xl pulse-glow group">
-        <div class="w-16 h-16 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+       class="card rounded-xl p-8 flex flex-col justify-center items-center group"
+       aria-label="View live parking feed and current statistics">
+        <div class="w-14 h-14 bg-blue-600 rounded-lg flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
           </svg>
         </div>
-        <h3 class="text-xl font-bold mb-2 text-cyan-200">Live Parking Feed</h3>
-        <p class="text-sm text-slate-300 text-center mb-6">
+        <h3 class="text-lg font-semibold mb-2 text-white">Live Parking Feed</h3>
+        <p class="text-sm text-gray-400 text-center mb-6">
           View real-time detection and spot data
         </p>
 
         <!-- Mini Summary -->
-        <div class="grid grid-cols-3 gap-3 w-full text-center border-t border-slate-600/50 pt-6">
-          <div class="stat-badge rounded-xl p-3">
-            <p id="live-open" class="text-2xl font-bold text-green-400">–</p>
-            <p class="text-xs text-slate-400 mt-1">Open</p>
+        <div class="grid grid-cols-3 gap-3 w-full text-center border-t border-gray-700 pt-6" role="status" aria-live="polite">
+          <div class="stat-badge rounded-lg p-3">
+            <p id="live-open" class="text-2xl font-semibold text-emerald-400" aria-label="Available parking spots">–</p>
+            <p class="text-xs text-gray-400 mt-1">Open</p>
           </div>
-          <div class="stat-badge rounded-xl p-3">
-            <p id="live-occ" class="text-2xl font-bold text-red-400">–</p>
-            <p class="text-xs text-slate-400 mt-1">Occupied</p>
+          <div class="stat-badge rounded-lg p-3">
+            <p id="live-occ" class="text-2xl font-semibold text-red-400" aria-label="Occupied parking spots">–</p>
+            <p class="text-xs text-gray-400 mt-1">Occupied</p>
           </div>
-          <div class="stat-badge rounded-xl p-3">
-            <p id="live-total" class="text-2xl font-bold text-cyan-400">–</p>
-            <p class="text-xs text-slate-400 mt-1">Total</p>
+          <div class="stat-badge rounded-lg p-3">
+            <p id="live-total" class="text-2xl font-semibold text-blue-400" aria-label="Total parking spots">–</p>
+            <p class="text-xs text-gray-400 mt-1">Total</p>
           </div>
         </div>
       </a>
 
       <!-- Debug Feed -->
       <a href="/debug_feed.html"
-       class="glass-card rounded-3xl p-8 flex flex-col justify-center items-center shadow-2xl group">
-        <div class="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+       class="card rounded-xl p-8 flex flex-col justify-center items-center group">
+        <div class="w-14 h-14 bg-amber-600 rounded-lg flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
         </div>
-        <h3 class="text-xl font-bold mb-2 text-yellow-200">Debug Mode</h3>
-        <p class="text-sm text-slate-300 text-center">
+        <h3 class="text-lg font-semibold mb-2 text-white">Debug Mode</h3>
+        <p class="text-sm text-gray-400 text-center">
           View motion and brightness overlays in real-time
         </p>
       </a>
 
       <!-- Spot Data -->
       <a href="/parking/spots" target="_blank"
-         class="glass-card rounded-3xl p-8 flex flex-col justify-center items-center shadow-2xl group">
-        <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+         class="card rounded-xl p-8 flex flex-col justify-center items-center group">
+        <div class="w-14 h-14 bg-emerald-600 rounded-lg flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
-        <h3 class="text-xl font-bold mb-2 text-green-200">Spot Data (JSON)</h3>
-        <p class="text-sm text-slate-300 text-center">
+        <h3 class="text-lg font-semibold mb-2 text-white">Spot Data (JSON)</h3>
+        <p class="text-sm text-gray-400 text-center">
           Raw parking spot occupancy data in JSON format
         </p>
       </a>
 
       <!-- Debug JSON -->
       <a href="/parking/spots?debug=true" target="_blank"
-         class="glass-card rounded-3xl p-8 flex flex-col justify-center items-center shadow-2xl group">
-        <div class="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+         class="card rounded-xl p-8 flex flex-col justify-center items-center group">
+        <div class="w-14 h-14 bg-purple-600 rounded-lg flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
           </svg>
         </div>
-        <h3 class="text-xl font-bold mb-2 text-purple-200">Debug Data</h3>
-        <p class="text-sm text-slate-300 text-center">
+        <h3 class="text-lg font-semibold mb-2 text-white">Debug Data</h3>
+        <p class="text-sm text-gray-400 text-center">
           Detailed parking data with brightness and motion metrics
         </p>
       </a>
 
       <!-- Mask Editor -->
       <a href="/mask_editor_info.html"
-         class="glass-card rounded-3xl p-8 flex flex-col justify-center items-center shadow-2xl group">
-        <div class="w-16 h-16 bg-gradient-to-br from-rose-400 to-pink-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+         class="card rounded-xl p-8 flex flex-col justify-center items-center group">
+        <div class="w-14 h-14 bg-pink-600 rounded-lg flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
         </div>
-        <h3 class="text-xl font-bold mb-2 text-rose-200">Mask Editor</h3>
-        <p class="text-sm text-slate-300 text-center">
+        <h3 class="text-lg font-semibold mb-2 text-white">Mask Editor</h3>
+        <p class="text-sm text-gray-400 text-center">
           Manage parking zone polygons interactively
         </p>
       </a>
 
       <!-- Analytics -->
       <a href="/analytics_placeholder.html"
-         class="glass-card rounded-3xl p-8 flex flex-col justify-center items-center shadow-2xl opacity-70 cursor-not-allowed">
-        <div class="w-16 h-16 bg-gradient-to-br from-slate-500 to-slate-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+         class="card rounded-xl p-8 flex flex-col justify-center items-center opacity-50 cursor-not-allowed">
+        <div class="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </div>
-        <h3 class="text-xl font-bold mb-2 text-slate-400">Analytics</h3>
-        <p class="text-sm text-slate-400 text-center">
+        <h3 class="text-lg font-semibold mb-2 text-gray-400">Analytics</h3>
+        <p class="text-sm text-gray-500 text-center">
           Coming Soon - Historical data and usage trends
         </p>
       </a>
@@ -222,8 +271,8 @@
   </main>
 
   <!-- Footer -->
-  <footer class="w-full bg-slate-900/50 backdrop-blur-md py-6 border-t border-slate-700/50 text-center">
-    <p class="text-slate-400 text-sm">Easy Park UTSA © 2025 — Smart Parking System Prototype</p>
+  <footer class="w-full bg-[#0f1422] py-6 border-t border-gray-800 text-center" role="contentinfo">
+    <p class="text-gray-500 text-sm">Easy Park UTSA © 2025 — Smart Parking System Prototype</p>
   </footer>
 </body>
 </html>
