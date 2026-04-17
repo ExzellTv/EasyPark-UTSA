@@ -3,51 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Debug mode for Easy Park UTSA showing frame differences and motion metrics" />
-  <meta name="theme-color" content="#0a0e1a" />
-  <title>Debug Parking Feed | Easy Park UTSA</title>
+  <meta name="description" content="Debug mode for EasyPark UTSA — motion metrics and frame difference overlays" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Debug Feed | EasyPark UTSA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
-    body {
-      background-color: #0a0e1a;
-    }
+    * { font-family: 'Fira Sans', sans-serif; }
+    body { background-color: #0f172a; }
+    .mono { font-family: 'Fira Code', monospace; }
 
     .panel {
-      background: #151b2e;
-      border: 1px solid #1f2937;
+      background: #1e293b;
+      border: 1px solid #334155;
     }
 
-    .stat-card {
-      background: #1a2236;
-      border: 1px solid #1f2937;
+    .stat-pill {
+      background: #0f172a;
+      border: 1px solid #334155;
     }
 
     .video-container {
-      position: relative;
-      overflow: hidden;
+      background: #1e293b;
+      border: 1px solid #334155;
       border-radius: 0.75rem;
-      background: #151b2e;
-      border: 1px solid #1f2937;
+      overflow: hidden;
     }
 
-    .debug-badge {
-      background: #1a2236;
-      border: 1px solid #1f2937;
-      transition: all 0.2s ease;
+    .debug-item {
+      background: #0f172a;
+      border: 1px solid #334155;
+      transition: border-color 150ms ease;
     }
-
-    .debug-badge:hover {
-      background: #1f2847;
-    }
-
-    .debug-indicator {
-      animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
+    .debug-item:hover { border-color: #475569; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+      50%       { opacity: 0.35; }
+    }
+    .debug-dot { animation: pulse 1.5s ease-in-out infinite; }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .debug-dot { animation: none; }
     }
   </style>
   <script>
@@ -57,221 +61,140 @@
     async function fetchDebugSpots() {
       try {
         const res = await fetch("/parking/spots?debug=true");
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        }
-
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-
-        if (data.error) {
-          throw new Error(data.error);
-        }
+        if (data.error) throw new Error(data.error);
 
         const { total, occupied, available } = data.summary;
+        setVal("openCount",  available, "text-emerald-400");
+        setVal("occCount",   occupied,  "text-red-400");
+        setVal("totalCount", total,     "text-amber-400");
 
-        // Update counts
-        updateCount("totalCount", total, "text-yellow-400");
-        updateCount("openCount", available, "text-green-400");
-        updateCount("occCount", occupied, "text-red-400");
-
-        // Update debug list
         const list = document.getElementById("spotList");
         list.innerHTML = "";
-
         data.spots.forEach(s => {
+          const isOcc = s.status === "occupied";
+          const diff = (s.diff ?? 0).toFixed(2);
           const item = document.createElement("li");
-          const isOccupied = s.status === "occupied";
-          item.className = "debug-badge px-4 py-3 rounded-lg text-sm font-medium";
+          item.className = "debug-item px-3 py-2.5 rounded-lg";
           item.setAttribute("role", "listitem");
-
-          const statusColor = isOccupied ? "text-red-400" : "text-emerald-400";
-          const diffValue = s.diff ?? 0;
-
+          item.setAttribute("aria-label", `Spot ${s.id} is ${s.status}, delta: ${diff}`);
           item.innerHTML = `
-            <div class="flex justify-between items-center">
-              <span class="${statusColor} font-semibold">Spot ${s.id}</span>
-              <span class="text-xs text-gray-400 bg-gray-900/40 px-2 py-1 rounded">${s.status}</span>
+            <div class="flex items-center justify-between">
+              <span class="text-xs mono text-slate-400">Spot ${s.id}</span>
+              <span class="text-xs font-medium mono ${isOcc ? "text-red-400" : "text-emerald-400"}">${s.status}</span>
             </div>
-            <div class="flex justify-between items-center mt-2 text-xs text-amber-400">
-              <span>Δ: ${diffValue.toFixed(2)}</span>
-            </div>
+            <div class="mt-1 text-xs mono text-amber-500/70">Δ ${diff}</div>
           `;
-          item.setAttribute("aria-label", `Spot ${s.id} is ${s.status}, frame difference: ${diffValue.toFixed(2)}`);
-
           list.appendChild(item);
         });
 
-        // Reset error counter
         errorCount = 0;
         hideError();
-
       } catch (e) {
-        console.error("Error fetching debug data", e);
         errorCount++;
-
-        if (errorCount >= MAX_ERRORS) {
-          showError(`Failed to load debug data: ${e.message}`);
-        }
+        if (errorCount >= MAX_ERRORS) showError(e.message);
       }
     }
 
-    function updateCount(id, value, colorClass) {
+    function setVal(id, value, colorClass) {
       const el = document.getElementById(id);
       if (el) {
         el.textContent = value;
-        el.className = `text-4xl font-bold ${colorClass} mb-1`;
+        el.className = `text-4xl font-semibold mono ${colorClass} mb-1`;
       }
     }
 
-    function showError(message) {
-      const banner = document.getElementById("error-banner");
-      if (banner) {
-        banner.querySelector("p").textContent = message;
-        banner.classList.remove("hidden");
-      }
+    function showError(msg) {
+      const el = document.getElementById("error-banner");
+      if (el) { el.textContent = `Failed to load debug data: ${msg}`; el.classList.remove("hidden"); }
     }
-
     function hideError() {
-      const banner = document.getElementById("error-banner");
-      if (banner) {
-        banner.classList.add("hidden");
-      }
+      const el = document.getElementById("error-banner");
+      if (el) el.classList.add("hidden");
     }
 
-    function handleVideoError() {
-      showError("Debug video feed unavailable. Please check camera connection.");
-    }
-
-    // Initialize
     setInterval(fetchDebugSpots, 2000);
-    window.onload = () => {
-      fetchDebugSpots();
-
-      // Add error handler for video feed
-      const videoImg = document.getElementById("debug-video-feed");
-      if (videoImg) {
-        videoImg.addEventListener("error", handleVideoError);
-      }
-
-      // GSAP animations
-      gsap.from(".video-container", {
-        opacity: 0,
-        scale: 0.95,
-        duration: 0.6,
-        ease: "power2.out"
-      });
-
-      gsap.from(".panel", {
-        opacity: 0,
-        x: 30,
-        duration: 0.6,
-        ease: "power2.out"
-      });
-
-      gsap.from("header", {
-        opacity: 0,
-        y: -20,
-        duration: 0.5,
-        ease: "power2.out"
-      });
-    };
+    window.onload = () => { fetchDebugSpots(); };
   </script>
 </head>
-<body class="text-white min-h-screen flex flex-col">
-  <!-- Error Banner -->
-  <div id="error-banner" role="alert" aria-live="assertive" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg border border-red-500 max-w-md text-center">
-    <p class="text-sm font-medium"></p>
+<body class="text-slate-100 min-h-screen flex flex-col">
+
+  <div id="error-banner" role="alert" aria-live="assertive"
+       class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-900/90 border border-red-700 text-red-200 px-5 py-2.5 rounded-lg text-sm max-w-sm text-center backdrop-blur-sm">
   </div>
 
-  <!-- Header -->
-  <header class="w-full bg-[#0f1422] border-b border-gray-800 py-6">
-    <div class="container mx-auto px-6 flex justify-between items-center">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 bg-amber-600 rounded-lg flex items-center justify-center">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-          </svg>
-        </div>
-        <h1 class="text-xl font-semibold text-white">
-          Debug Mode
-        </h1>
-        <div class="flex items-center space-x-2 ml-4">
-          <div class="w-2 h-2 bg-amber-400 rounded-full debug-indicator"></div>
-          <span class="text-xs text-amber-400 font-medium uppercase tracking-wide">Debug Active</span>
+  <header class="border-b border-slate-800 py-5" role="banner">
+    <div class="max-w-6xl mx-auto px-6 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <a href="/" class="flex items-center gap-2.5" aria-label="Back to dashboard">
+          <div class="w-8 h-8 bg-emerald-500 rounded-md flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7M12 3v18"/>
+            </svg>
+          </div>
+          <span class="text-base font-semibold tracking-tight">EasyPark UTSA</span>
+        </a>
+        <div class="flex items-center gap-1.5" aria-label="Debug mode active">
+          <span class="w-1.5 h-1.5 bg-amber-400 rounded-full debug-dot"></span>
+          <span class="text-xs text-slate-500 mono uppercase tracking-wider">Debug</span>
         </div>
       </div>
-      <a href="/" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg text-sm font-medium text-white transition-colors">
-        ← Dashboard
-      </a>
+      <a href="/" class="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer mono">← Dashboard</a>
     </div>
   </header>
 
-  <!-- Main Content -->
-  <main class="flex-grow container mx-auto px-6 py-10 grid lg:grid-cols-3 gap-6">
-    <!-- Debug video feed -->
+  <main class="flex-grow max-w-6xl mx-auto w-full px-6 py-10 grid lg:grid-cols-3 gap-6" role="main">
+
+    <!-- Debug video -->
     <div class="lg:col-span-2 flex flex-col">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-semibold text-white">
-          Live Debug Stream
-        </h2>
-      </div>
+      <h2 class="text-sm font-semibold text-slate-400 mono uppercase tracking-wider mb-4">Debug Stream</h2>
       <div class="video-container">
-        <img id="debug-video-feed" src="/parking/video_feed?debug=true" alt="Debug parking feed showing motion and brightness metrics with frame difference overlays" class="w-full h-auto" loading="lazy" />
+        <img id="debug-video-feed" src="/parking/video_feed?debug=true"
+             alt="Debug parking feed with motion and brightness overlays"
+             class="w-full h-auto block"
+             onerror="document.getElementById('error-banner').textContent='Debug feed unavailable'; document.getElementById('error-banner').classList.remove('hidden')" />
       </div>
-      <p class="text-gray-400 text-sm mt-4 text-center">
-        Feed includes motion & brightness overlays for real-time debugging • Δ = frame difference metric
-      </p>
+      <p class="text-xs text-slate-600 mono mt-3 text-center">Motion & brightness overlays · Δ = frame difference metric</p>
     </div>
 
-    <!-- Stats panel -->
+    <!-- Debug stats -->
     <div class="panel rounded-xl p-6 flex flex-col">
-      <h3 class="text-xl font-semibold mb-6 text-white">
-        Debug Status
-      </h3>
+      <h3 class="text-xs font-semibold text-slate-500 mono uppercase tracking-wider mb-5">Debug Status</h3>
 
-      <div class="grid grid-cols-1 gap-4 mb-6">
-        <div class="stat-card rounded-lg p-5 text-center">
-          <p class="text-4xl font-semibold text-emerald-400 mb-1" id="openCount">–</p>
-          <p class="text-sm text-gray-400 uppercase tracking-wide">Available Spots</p>
+      <div class="space-y-3 mb-6">
+        <div class="stat-pill rounded-lg p-4 text-center">
+          <p class="text-4xl font-semibold mono text-emerald-400 mb-1" id="openCount">–</p>
+          <p class="text-xs text-slate-500 uppercase tracking-wide">Available</p>
         </div>
-        <div class="stat-card rounded-lg p-5 text-center">
-          <p class="text-4xl font-semibold text-red-400 mb-1" id="occCount">–</p>
-          <p class="text-sm text-gray-400 uppercase tracking-wide">Occupied Spots</p>
+        <div class="stat-pill rounded-lg p-4 text-center">
+          <p class="text-4xl font-semibold mono text-red-400 mb-1" id="occCount">–</p>
+          <p class="text-xs text-slate-500 uppercase tracking-wide">Occupied</p>
         </div>
-        <div class="stat-card rounded-lg p-5 text-center">
-          <p class="text-4xl font-semibold text-amber-400 mb-1" id="totalCount">–</p>
-          <p class="text-sm text-gray-400 uppercase tracking-wide">Total Spots</p>
+        <div class="stat-pill rounded-lg p-4 text-center">
+          <p class="text-4xl font-semibold mono text-amber-400 mb-1" id="totalCount">–</p>
+          <p class="text-xs text-slate-500 uppercase tracking-wide">Total</p>
         </div>
       </div>
 
-      <div class="border-t border-gray-700 pt-6">
-        <h4 class="text-sm text-gray-400 mb-4 uppercase tracking-wide font-medium">Debug Data Stream</h4>
-        <ul id="spotList" class="space-y-2 overflow-y-auto h-96 pr-2 custom-scrollbar" role="list" aria-live="polite" aria-label="Debug data with frame differences for each parking spot"></ul>
+      <div class="border-t border-slate-700/60 pt-5">
+        <h4 class="text-xs text-slate-500 mono uppercase tracking-wider mb-3">Debug Data Stream</h4>
+        <ul id="spotList"
+            class="space-y-1.5 overflow-y-auto h-72 pr-1 custom-scrollbar"
+            role="list"
+            aria-live="polite"
+            aria-label="Debug data for each parking spot">
+        </ul>
       </div>
     </div>
+
   </main>
 
-  <!-- Footer -->
-  <footer class="w-full bg-[#0f1422] py-6 border-t border-gray-800 text-center">
-    <p class="text-gray-500 text-sm">Easy Park UTSA © 2025 — Debug Console</p>
+  <footer class="border-t border-slate-800 py-5" role="contentinfo">
+    <div class="max-w-6xl mx-auto px-6 text-center">
+      <p class="text-xs text-slate-600 mono">EasyPark UTSA © 2025 — Debug Console</p>
+    </div>
   </footer>
 
-  <style>
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 8px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #1a2236;
-      border-radius: 10px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #374151;
-      border-radius: 10px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #4b5563;
-    }
-  </style>
 </body>
 </html>
